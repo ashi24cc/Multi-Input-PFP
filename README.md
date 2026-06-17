@@ -1,9 +1,9 @@
-# Incremental-Training-Protein
-This is repository for the Incremental learning.
+# Multi-Input-Protein
+This is repository for the Multi-Input PFP.
 
 This has following main python files.
   1) Model.py - This python file contains the code for CNN-based segment encoder.
-  2) Incremental_Training_Predict.py - This contains the code for segmentation + incremental training + Testing.
+  2) Multi_Input_Training_Predict.py - This contains the code for segmentation + Multi-Input training + Testing.
   3) Predict.py - This contains the code for the predicting on unseen data.
   4) Evaluate.py - This contains the code for the evaluation metrics.
 
@@ -26,10 +26,10 @@ Step 1: Run `python Model.py`                   <==== Create an instance of Lite
 
 Step 2: Run `python Evaluate.py`                <==== Code for the evaluation metrics.
 
-Step 3: Run `python Incremental_Training_Predict.py`    <==== Start the incremental training + Predict
+Step 3: Run `python Multi_Input_Training_Predict.py`    <==== Start the incremental training + Predict
 
 # Alternative approach to run code:
 
-Rune the example python file inside Example directory in the Google Colab. Set the dataset directory if needed.
+Run the example python file inside Example directory in the Google Colab. Set the dataset directory if needed.
 
 The paper is under review at Scientific Reports.
