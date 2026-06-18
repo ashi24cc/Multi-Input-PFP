@@ -31,5 +31,3 @@ Step 3: Run `python Multi_Input_Training_Predict.py`    <==== Start the incremen
 # Alternative approach to run code:
 
 Run the example python file inside Example directory in the Google Colab. Set the dataset directory if needed.
-
-The paper is under review at Scientific Reports.
