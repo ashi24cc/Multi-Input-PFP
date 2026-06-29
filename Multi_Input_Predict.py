@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from keras.preprocessing import sequence
-from Model import nGram, dictionary, DC_CNN_Model
+from Model import nGram, dictionary, pChemical, DC_CNN_Model
 from sklearn.metrics import roc_auc_score
 from Evaluate import recall, precision
 import keras
@@ -30,66 +30,68 @@ dataset = dataframe.values
 print('Original Dataset Size : %s' %len(dataset))
 X = dataset[:,0]
 Y = dataset[:,1:len(dataset[0])]
-nb_of_cls = len(Y[0])
 del dataframe, dataset
 print(X.shape, Y.shape)
-print(nb_of_cls)
 
 # Preparing For Training
-segmentSize = 200
-nonOL = segmentSize - 100
+segmentSize = 100
+nonOL = segmentSize - 50
 SEG = str(segmentSize)
+
+X, Y = segment(X, Y, segmentSize, nonOL)
+nb_of_cls = len(Y[0])
+
+#Split the dataset
+x_tr, x_val, y_tr, y_val = train_test_split(X, Y, test_size = 0.1, random_state = 42)
+del X, Y
+
+y_train = np.array(y_tr, dtype=None)
+y_validate = np.array(y_val, dtype=None)
+print(len(x_tr), len(x_val))
+print(y_train.shape, y_validate.shape)
 
 # CREATING DICTIONARY
 chunkSize = 4
 dict_Prop = dictionary(chunkSize)
 max_seq_len = segmentSize - chunkSize + 1
 
+#CREATING N-GRAM REPRESENTATION
+x_train_gram = nGram(x_tr, chunkSize, dict_Prop)
+x_validate_gram = nGram(x_val, chunkSize, dict_Prop)
+
+# truncate and pad input sequences
+x_train_gram = sequence.pad_sequences(x_train_gram, maxlen=max_seq_len)
+x_validate_gram = sequence.pad_sequences(x_validate_gram, maxlen=max_seq_len)
+print(x_train_gram.shape, x_validate_gram.shape)
+
+#CREATING PHYSICOCHEMICAL REPRESENTATION
+x_train_phy = pChemical(x_tr, segmentSize)
+x_validate_phy = pChemical(x_val, segmentSize)
+print(x_train_phy.shape, x_validate_phy.shape)
+del x_tr, x_val
+
 # Create & Compile the model
-model = DC_CNN_Model(len(dict_Prop), max_seq_len, nb_of_cls)
+model = create_rec_model1(len(dict_Prop), max_seq_len, nb_of_cls)
 print(model.summary())
 
-div = [200, 500, 1000, 2000]
-for max_len in div:
-    X1, Y1 = segment(X, Y, segmentSize, nonOL, max_len)
+# Train
+early_stopping_monitor1 = keras.callbacks.EarlyStopping(monitor = 'val_loss', patience = 5, verbose = 1)
+history = model.fit([x_train_gram, x_train_phy], y_train.astype(None),
+          validation_data = ([x_validate_gram, x_validate_phy], y_validate.astype(None)),
+          epochs = 1000,
+          batch_size = 150,
+          callbacks=[early_stopping_monitor1],
+          verbose=1)
 
-    #Split the dataset
-    x_tr, x_val, y_tr, y_val = train_test_split(X1, Y1, test_size = 0.1, random_state = 42)
-
-    y_train = np.array(y_tr, dtype=None)
-    y_validate = np.array(y_val, dtype=None)
-    print(len(x_tr), len(x_val))
-    print(y_train.shape, y_validate.shape)
-
-    del y_tr, y_val
-
-    #CREATING N-GRAM
-    x_train = nGram(x_tr, chunkSize, dict_Prop)
-    x_validate = nGram(x_val, chunkSize, dict_Prop)
-    #del x_tr, x_val
-
-    # truncate and pad input sequences
-    x_train = sequence.pad_sequences(x_train, maxlen=max_seq_len)
-    x_validate = sequence.pad_sequences(x_validate, maxlen=max_seq_len)
-
-    # Train
-    early_stopping_monitor1 = keras.callbacks.EarlyStopping(monitor = 'val_loss', patience = 5, verbose = 1)
-    history = model.fit(x_train, y_train.astype(None),
-                        validation_data = (x_validate, y_validate.astype(None)),
-                        epochs = 500,
-                        batch_size = 150,
-                        callbacks=[early_stopping_monitor1],
-                        verbose=1)
-
-    del y_train, y_validate
+del y_train, y_validate
 
 # Testing
 def cls_predict(pred, normalize=True, sample_weight=None):
     s_mean = np.mean(pred, axis=0)
     return(list(s_mean))
 
-def final_model(filename, segmentSize):
-    print('Extracting features based on trained model...... ')
+def final_model(filename):
+    print('Extracting features based on LSTM model...... ')
     dataframe2 = pd.read_csv(filename, header=None)
     dataset2 = dataframe2.values
     overlap = 50
@@ -105,8 +107,9 @@ def final_model(filename, segmentSize):
             init = itr * overlap
             segment.append(row[init : init + segmentSize])
         seg_nGram = nGram(segment, chunkSize, dict_Prop)
-        test_seg = sequence.pad_sequences(seg_nGram, maxlen=max_seq_len)
-        preds = model.predict(test_seg, verbose = 0)
+        test_seg_gram = sequence.pad_sequences(seg_nGram, maxlen=max_seq_len)
+        test_seg_phy = pChemical(segment, segmentSize)
+        preds = model.predict([test_seg_gram, test_seg_phy], verbose = 0)
         c_p.append(cls_predict(preds))
     c_p = np.array(c_p)
     return c_p, Y_test
@@ -164,12 +167,3 @@ def test_fun(X_test_new, Y_test_new):
     return tmax
 
 th_set = test_fun(X_test_new, Y_test_new)
-
-# Computing AUROC
-# Flatten if multilabel
-y_true = Y_test_new.flatten()
-y_scores = X_test_new.flatten()   # RAW predictions (no threshold)
-
-# AUROC
-auroc = roc_auc_score(y_true, y_scores)
-print(f'AUROC: {auroc:.3f}')
