@@ -22,11 +22,11 @@ The dataset for BP and MF is presents in the BP and MF folders, respectively.
 Download the BP and MF datasets and set the training path in `Model.py` and `Incremental.py`.
 The major steps with training are as follows:
 
-Step 1: Run `python Model.py`                   <==== Create an instance of LiteSeqCNN
+Step 1: Run `python Model.py`                   <==== Create an instance of multi-input classifier
 
 Step 2: Run `python Evaluate.py`                <==== Code for the evaluation metrics.
 
-Step 3: Run `python Multi_Input_Training_Predict.py`    <==== Start the incremental training + Predict
+Step 3: Run `python Multi_Input_Training_Predict.py`    <==== Start the training + Predict
 
 # Alternative approach to run code:
 
