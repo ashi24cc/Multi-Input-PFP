@@ -29,48 +29,60 @@ def final_model(filename):
             init = itr * overlap
             segment.append(row[init : init + segmentSize])
         seg_nGram = nGram(segment, chunkSize, dict_Prop)
-        test_seg = sequence.pad_sequences(seg_nGram, maxlen=max_seq_len)
-        preds = model.predict(test_seg, verbose = 0)
+        test_seg_gram = sequence.pad_sequences(seg_nGram, maxlen=max_seq_len)
+        test_seg_phy = pChemical(segment, segmentSize)
+        preds = model.predict([test_seg_gram, test_seg_phy], verbose = 0)
         c_p.append(cls_predict(preds))
     c_p = np.array(c_p)
     return c_p, Y_test
 
 # Testing
-def test_fun(file):
-    X_test_new, Y_test_new = final_model(file)
-    print(X_test_new.shape, Y_test_new.shape)
-    Y_test_new = np.array(Y_test_new).astype(None)
-
+def test_fun(X_test_new, Y_test_new):
     fmax, tmax = 0.0, 0.0
     precisions, recalls = [], []
-    for t in range(1, 101, 1):
+    for t in range(0, 101, 1):
         #test_preds = model1.predict(X_test_new)
         test_preds = np.copy(X_test_new)
 
         threshold = t / 100.0
-        print("THRESHOLD IS =====> ", threshold)
+        #print("THRESHOLD IS =====> ", threshold)
         test_preds[test_preds>=threshold] = int(1)
         test_preds[test_preds<threshold] = int(0)
 
         rec = recall(Y_test_new, test_preds)
         pre = precision(Y_test_new, test_preds)
+        if math.isnan(pre):
+            pre = 1.0
         recalls.append(rec)
         precisions.append(pre)
 
         f = 2 * pre * rec / (pre + rec)
-        print('Recall: {0}'.format(rec*100), '     Precision: {0}'.format(pre*100),
-              '     F1-score1: {0}'.format(f*100))
+        #print('Recall: {0}'.format(rec*100), '     Precision: {0}'.format(pre*100), '     F1-score1: {0}'.format(f*100))
 
         if fmax < f:
             fmax = f
             tmax = threshold
 
+    test_preds = np.copy(X_test_new)
+    print("THRESHOLD IS =====> ", tmax)
+    test_preds[test_preds>=tmax] = int(1)
+    test_preds[test_preds<tmax] = int(0)
+
+    rec = recall(Y_test_new, test_preds)
+    pre = precision(Y_test_new, test_preds)
+
+    f = 2 * pre * rec / (pre + rec)
+    print('Recall: {0}'.format(rec*100), '     Precision: {0}'.format(pre*100), '     F1-score1: {0}'.format(f*100))
+
+    # COMPUTE AUPR
     precisions = np.array(precisions)
     recalls = np.array(recalls)
     sorted_index = np.argsort(recalls)
     recalls = recalls[sorted_index]
     precisions = precisions[sorted_index]
+    aupr = np.trapezoid(precisions, recalls)
+    print(f'AUPR: {aupr:0.3f}')
 
     return tmax
 
-th_set = test_fun("bp/testData.csv")
+th_set = test_fun(X_test_new, Y_test_new)
