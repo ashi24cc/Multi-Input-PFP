@@ -4,8 +4,8 @@ from tensorflow import keras
 from tensorflow.keras import layers
 tf.random.set_seed(7)
 
-def dictionary(chunk_size):
-    dataframe = pd.read_csv("mf/trainData.csv", header=None)
+def dictionary(train_path, chunk_size):
+    dataframe = pd.read_csv(train_path, header=None)
     dataset = dataframe.values
     del dataframe
 
